@@ -53,7 +53,7 @@ def agrupar_e_somar(df, coluna_agrupamento):
         {'Valor_Total_Item': 'sum', 'Total_Custo_Compra': 'sum', 'Total_Lucro_Venda_Item': 'sum'}
     ).reset_index()
 
-def ranking_clientes(df, top_n=20, max_len=25):
+def ranking_clientes(df, top_n=5, max_len=25):
     """Retorna os top N clientes com maior faturamento total, incluindo o número do ranking."""
     df_clientes = df.groupby('Cliente').agg({'Valor_Total_Item': 'sum'}).reset_index()
     df_clientes = df_clientes.sort_values(by='Valor_Total_Item', ascending=False).head(top_n)
@@ -70,39 +70,36 @@ def produtos_mais_vendidos(df, top_n=10, ordenar_por='Valor_Total_Item', max_len
     return df_ordenado.head(top_n)
 
 def criar_grafico_barras(df, x, y, title, labels):
-    df = df.sort_values(by=y, ascending=False) 
-    df = df.iloc[::-1]
+    df = df.sort_values(by=y, ascending=False)
     df['Valor_Monetario'] = df['Valor_Total_Item'].apply(formatar_moeda)
-    fig = px.bar(df, x=y, y=x,
+    fig = px.bar(df, x=x, y=y,
                 title=title,
-                labels={labels.get(y, y): labels.get(x, x), labels.get(x, x): labels.get(y, y)},
-                color=y,
+                labels={labels.get(x, x): labels.get(x, x), labels.get(y, y): labels.get(y, y)},
                 text=df['Valor_Monetario'],
                 template="ggplot2",
                 hover_data={y: False, x: False, 'Valor_Monetario': True},
-                orientation='h')
+                orientation='v')
     fig.update_traces(
-        marker=dict(line=dict(color='black', width=1)),
-        hoverlabel=dict(bgcolor="black", font_size=22, font_family="Arial, sans-serif"),
-        textfont=dict(size=28, color='white'),
-        textangle=0,
-        textposition='inside'
+        marker=dict(line=dict(color='black', width=1), color='blue'),
+        textfont=dict(size=18, color='#ffffff'), 
+        textangle=-0,
+        textposition='inside',
     )
     fig.update_layout(
-        yaxis_title=labels.get(x, x),
-        xaxis_title=labels.get(y, y),
+        yaxis_title=labels.get(y, y),
+        xaxis_title=labels.get(x, x),
         showlegend=False,
-        height=600,  # Ajuste para telas menores
-        width=350,   # Ajuste para telas menores
-        xaxis=dict(tickfont=dict(size=12)),  # Ajuste para telas menores
+        height=400,
+        width=350,
+        xaxis=dict(tickfont=dict(size=10)),
         yaxis=dict(
             title=dict(
-                text=labels.get(x, x),
-                font=dict(size=14)
+                text=labels.get(y, y),
+                font=dict(size=12)
             ),
-            tickfont=dict(size=12),
+            tickfont=dict(size=10),
         ),
-        title_font=dict(size=20, family="Times New Roman"),  # Ajuste para telas menores
+        title_font=dict(size=18, family="Times New Roman"),
         margin=dict(l=10, r=10)
     )
     return fig
@@ -111,37 +108,33 @@ def criar_grafico_vendas_diarias(df, mes, ano):
     df_filtrado = df[(df['Mes'] == mes) & (df['Ano'] == ano)]
     vendas_diarias = df_filtrado.groupby('Dia')['Valor_Total_Item'].sum().reset_index()
     vendas_diarias["Valor_Monetario"] = vendas_diarias["Valor_Total_Item"].apply(formatar_moeda)
+
     fig = px.bar(
-        vendas_diarias, x='Dia', y='Valor_Total_Item',
+        vendas_diarias, 
+        x='Dia', 
+        y='Valor_Total_Item',
         title=f'Vendas Diárias em {mes}/{ano}',
         labels={'Dia': 'Dia', 'Valor_Total_Item': 'Valor Total de Venda'},
-        color='Valor_Total_Item',
-        text=vendas_diarias["Valor_Monetario"],
-        template="plotly_white", hover_data={'Valor_Total_Item': False,'Valor_Monetario': True})
-    fig.update_traces(
-        marker=dict(line=dict(color='black', width=1)),
-        hoverlabel=dict(bgcolor="black", font_size=16,
-            font_family="Arial-bold, sans-serif"), 
-            textfont=dict(size=20, color='#ffffff', family="Garamond"),
-            textangle=0, textposition='outside', cliponaxis=False)
-            
-    fig.update_layout(yaxis_title='Valor Total de Venda',
-        xaxis_title='Dia',
-        showlegend=False, height=400,  # Ajuste para telas menores
-        xaxis=dict(tickfont=dict(size=12)),  # Ajuste para telas menores
-        yaxis=dict(
-            title=dict(
-                text='Valor Total de Venda',
-                font=dict(size=12)
-            ),
-            tickfont=dict(size=10)
-        ),
-        title_font=dict(size=20, family="garamond")  # Ajuste para telas menores
+        text=vendas_diarias["Valor_Monetario"]
     )
+
+    fig.update_traces(
+        marker=dict(line=dict(color='black', width=1), color='green'),
+        textfont=dict(color='white')  
+    )
+
+    fig.update_layout(
+        showlegend=False,
+        height=300,  
+        width=300,   
+        title_font=dict(size=14)  
+    )
+
     return fig
 
 def exibir_grafico_ticket_medio(df_ticket_medio):
     df_ticket_medio['Ticket Medio'] = df_ticket_medio['Ticket_Medio'].apply(formatar_moeda)
+
     fig = px.bar(
         df_ticket_medio,
         x="Vendedor",
@@ -150,48 +143,20 @@ def exibir_grafico_ticket_medio(df_ticket_medio):
         barmode="group",
         title="Ticket Médio por Vendedor e Semana",
         labels={"Ticket_Medio": "Ticket Médio", "Vendedor": "Vendedor", "Semana": "Semana"},
-        text=df_ticket_medio["Ticket Medio"],
-        template="plotly_dark",
-        hover_data={"Vendedor": False, "Ticket_Medio": False, 'Ticket Medio': True}
+        text=df_ticket_medio["Ticket Medio"]
     )
+
     fig.update_traces(
-        marker=dict(line=dict(color='black', width=1)),
-        hoverlabel=dict(bgcolor="black", font_size=16, font_family="Arial, sans-serif"),
-        textfont=dict(size=18, color='#ffffff', family="Arial, sans-serif", 
-                        ),
-        textposition='outside',
-        cliponaxis=False
+        textfont=dict(color='white')  
     )
 
     fig.update_layout(
-        yaxis_title="Ticket Médio",
-        xaxis_title="Vendedor",
         showlegend=True,
-        height=400, width=350,  # Ajuste para telas menores
-        xaxis=dict(tickfont=dict(size=10)),  # Ajuste para telas menores
-        yaxis=dict(
-            title=dict(
-                text="Ticket Médio",
-                font=dict(size=12)
-            ),
-            tickfont=dict(size=10),  # Ajuste para telas menores
-        ),
-        title_font=dict(size=20, family="Times New Roman"),  # Ajuste para telas menores
-        legend=dict(
-            title="Semanas",
-            orientation="v",
-            yanchor="top",
-            y=1,
-            xanchor="left",
-            x=1,
-            font=dict(
-                size=12,  # Ajuste para telas menores
-                family="Arial, sans-serif",
-                color="black",
-            )
-        ),
-        bargap=0.1
+        height=300,
+        width=300,
+        title_font=dict(size=14)
     )
+
     return fig
 
 def criar_grafico_pizza_vendas_linha(df):
@@ -293,32 +258,23 @@ def renderizar_pagina_vendas(df):
 
     fig = px.bar(
         df_ranking,
-        x="Valor_Total_Item",
-        y="Cliente",
-        orientation="h",
+        x="Cliente",
+        y="Valor_Total_Item", 
+        orientation="v",
         title="Top Clientes por Faturamento",
-        labels={"Valor_Total_Item": "Faturamento (R$)", "Cliente": "Clientes"},
-        text=df_ranking["Valor_Total_Item"],
-        color="Valor_Total_Item", 
-        color_continuous_scale="Viridis"
+        labels={"Cliente": "Clientes", "Valor_Total_Item": "Faturamento (R$)", },
+        text=df_ranking["Valor_Total_Item"]
     )
 
     fig.update_traces(
         textposition="inside",
-        textfont=dict(size=14, color="black") 
+        textfont=dict(size=12, color="white")  
     )
 
     fig.update_layout(
-        xaxis_showticklabels=True,
-        height=400, width=350,  # Ajuste para telas menores
-        yaxis=dict(
-            title=dict(font=dict(size=12)),
-            tickfont=dict(size=10)
-        ),
-        xaxis=dict(
-            tickfont=dict(size=10)
-        ),
-        title_font=dict(size=20, family="Times New Roman")  # Ajuste para telas menores
+        height=300,  
+        width=300,   
+        title_font=dict(size=14)  
     )
     
     graphs = [
