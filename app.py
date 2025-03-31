@@ -35,14 +35,14 @@ def formatar_moeda(valor, simbolo_moeda="R$"):
         return f"{simbolo_moeda} {valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     except (TypeError, ValueError):
         return "Valor inválido"
-    
+
 def calcular_metricas(df):
     """Calcula métricas de vendas, incluindo o Ticket Médio Geral."""
-    total_nf = len(df['NF'].unique()) 
-    total_qtd_produto = df['Qtd_Produto'].sum() 
-    valor_total_item = df['Valor_Total_Item'].sum()  
-    total_custo_compra = df['Total_Custo_Compra'].sum()  
-    total_lucro_venda = df['Total_Lucro_Venda_Item'].sum() 
+    total_nf = len(df['NF'].unique())
+    total_qtd_produto = df['Qtd_Produto'].sum()
+    valor_total_item = df['Valor_Total_Item'].sum()
+    total_custo_compra = df['Total_Custo_Compra'].sum()
+    total_lucro_venda = df['Total_Lucro_Venda_Item'].sum()
 
     ticket_medio_geral = valor_total_item / total_nf if total_nf > 0 else 0
 
@@ -81,7 +81,7 @@ def criar_grafico_barras(df, x, y, title, labels):
                 orientation='v')
     fig.update_traces(
         marker=dict(line=dict(color='black', width=1), color='blue'),
-        textfont=dict(size=18, color='#ffffff'), 
+        textfont=dict(size=18, color='#ffffff'),
         textangle=-0,
         textposition='inside',
     )
@@ -110,8 +110,8 @@ def criar_grafico_vendas_diarias(df, mes, ano):
     vendas_diarias["Valor_Monetario"] = vendas_diarias["Valor_Total_Item"].apply(formatar_moeda)
 
     fig = px.bar(
-        vendas_diarias, 
-        x='Dia', 
+        vendas_diarias,
+        x='Dia',
         y='Valor_Total_Item',
         title=f'Vendas Diárias em {mes}/{ano}',
         labels={'Dia': 'Dia', 'Valor_Total_Item': 'Valor Total de Venda'},
@@ -120,38 +120,11 @@ def criar_grafico_vendas_diarias(df, mes, ano):
 
     fig.update_traces(
         marker=dict(line=dict(color='black', width=1), color='green'),
-        textfont=dict(color='white')  
+        textfont=dict(color='white')
     )
 
     fig.update_layout(
         showlegend=False,
-        height=300,  
-        width=300,   
-        title_font=dict(size=14)  
-    )
-
-    return fig
-
-def exibir_grafico_ticket_medio(df_ticket_medio):
-    df_ticket_medio['Ticket Medio'] = df_ticket_medio['Ticket_Medio'].apply(formatar_moeda)
-
-    fig = px.bar(
-        df_ticket_medio,
-        x="Vendedor",
-        y="Ticket_Medio",
-        color="Semana",
-        barmode="group",
-        title="Ticket Médio por Vendedor e Semana",
-        labels={"Ticket_Medio": "Ticket Médio", "Vendedor": "Vendedor", "Semana": "Semana"},
-        text=df_ticket_medio["Ticket Medio"]
-    )
-
-    fig.update_traces(
-        textfont=dict(color='white')  
-    )
-
-    fig.update_layout(
-        showlegend=True,
         height=300,
         width=300,
         title_font=dict(size=14)
@@ -159,14 +132,15 @@ def exibir_grafico_ticket_medio(df_ticket_medio):
 
     return fig
 
+
 def criar_grafico_pizza_vendas_linha(df):
     """Cria um gráfico de pizza mostrando as vendas por linha de produto."""
     df_linha = df.groupby('Linha')['Valor_Total_Item'].sum().reset_index()
-    fig = px.pie(df_linha, values='Valor_Total_Item', names='Linha', 
-                    title='Vendas por Linha de Produto', 
-                    hover_data=['Valor_Total_Item'])
+    fig = px.pie(df_linha, values='Valor_Total_Item', names='Linha',
+                title='Vendas por Linha de Produto',
+                hover_data=['Valor_Total_Item'])
     fig.update_traces(
-        textposition='inside', 
+        textposition='inside',
         textinfo='percent+label',
         textfont=dict(size=14)  # Ajuste para telas menores
     )
@@ -214,9 +188,25 @@ def processar_dados_ticket_medio(df):
     df_nf_unicas = pd.merge(df_nf_unicas, df_resumo_vendas, on=['Ano', 'Mes', 'Semana', 'Vendedor'], how='left')
 
     df_ticket_medio = df_nf_unicas.groupby(['Vendedor', 'Semana'])['Valor_Total_Nota'].mean().reset_index(name='Ticket_Medio')
-    df_ticket_medio['Ticket Medio'] = df_ticket_medio['Ticket_Medio'].apply(formatar_moeda)
-    
     return df_ticket_medio
+
+def criar_tabela_ticket_medio(df_ticket_medio):
+    """Cria uma tabela com o ticket médio por vendedor e semana."""
+
+    # Pivotear a tabela
+    tabela_pivot = df_ticket_medio.pivot(index='Vendedor', columns='Semana', values='Ticket_Medio')
+
+    # Renomear as colunas para "Semana 1", "Semana 2", etc.
+    tabela_pivot.columns = [f"Semana {i+1}" for i in range(len(tabela_pivot.columns))]
+
+    # Resetar o índice para ter a coluna "Vendedor"
+    tabela_pivot = tabela_pivot.reset_index()
+
+    # Formatar os valores da tabela como moeda
+    for col in tabela_pivot.columns[1:]:  # Começar da segunda coluna (Semana 1)
+        tabela_pivot[col] = tabela_pivot[col].apply(formatar_moeda)
+
+    return tabela_pivot
 
 def renderizar_pagina_vendas(df):
     df_filtrado = aplicar_filtros(df)
@@ -225,14 +215,14 @@ def renderizar_pagina_vendas(df):
     mes_atual = datetime.datetime.now().month
 
     total_nf, total_qtd_produto, valor_total_item, total_custo_compra, total_lucro_venda, ticket_medio_geral = calcular_metricas(df_filtrado)
-    
+
     def card_style(metric_name, value, color="#FFFFFF", bg_color="#262730"):
         return f"""
         <div style="
-            padding: 10px; 
-            border-radius: 10px; 
-            background-color: {bg_color}; 
-            color: {color}; 
+            padding: 10px;
+            border-radius: 10px;
+            background-color: {bg_color};
+            color: {color};
             text-align: center;
             box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
         ">
@@ -259,29 +249,33 @@ def renderizar_pagina_vendas(df):
     fig = px.bar(
         df_ranking,
         x="Cliente",
-        y="Valor_Total_Item", 
+        y="Valor_Total_Item",
         orientation="v",
         title="Top Clientes por Faturamento",
-        labels={"Cliente": "Clientes", "Valor_Total_Item": "Faturamento (R$)", },
+        labels={"Valor_Total_Item": "Faturamento (R$)", "Cliente": "Clientes"},
         text=df_ranking["Valor_Total_Item"]
     )
 
     fig.update_traces(
         textposition="inside",
-        textfont=dict(size=12, color="white")  
+        textfont=dict(size=12, color="white")
     )
 
     fig.update_layout(
-        height=300,  
-        width=300,   
-        title_font=dict(size=14)  
+        height=300,
+        width=300,
+        title_font=dict(size=14)
     )
-    
+
+    # Adicionar a tabela de ticket médio
+    tabela_ticket_medio = criar_tabela_ticket_medio(df_ticket_medio)
+    st.subheader("Ticket Médio por Vendedor e Semana (Tabela)")
+    st.dataframe(tabela_ticket_medio)
+
     graphs = [
         criar_grafico_vendas_diarias(df_filtrado, mes_atual, ano_atual),
         criar_grafico_barras(agrupar_e_somar(df_filtrado, 'Vendedor'), 'Vendedor', 'Valor_Total_Item', 'Vendas por Vendedor', {'Valor_Total_Item': 'Valor Total de Venda'}),
         criar_grafico_barras(produtos_mais_vendidos(df_filtrado), 'Descricao_produto', 'Valor_Total_Item', 'Top 10 Produtos Mais Vendidos', {'Descricao_produto': 'Produto', 'Valor_Total_Item': 'Valor Total de Venda'}),
-        exibir_grafico_ticket_medio(df_ticket_medio),
         criar_grafico_pizza_vendas_linha(df_filtrado),
         fig
     ]
