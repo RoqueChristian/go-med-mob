@@ -63,7 +63,7 @@ def ranking_clientes(df, top_n=5, max_len=25):
     df_clientes['Cliente'] = df_clientes['Cliente'].str[:max_len]
     return df_clientes
 
-def produtos_mais_vendidos(df, top_n=10, ordenar_por='Valor_Total_Item', max_len=30):
+def produtos_mais_vendidos(df, top_n=5, ordenar_por='Valor_Total_Item', max_len=30):
     df_agrupado = df.groupby('Descricao_produto')[ordenar_por].sum().reset_index()
     df_ordenado = df_agrupado.sort_values(by=ordenar_por, ascending=False)
     df_ordenado['Descricao_produto'] = df_ordenado['Descricao_produto'].str[:max_len]
@@ -170,8 +170,7 @@ def aplicar_filtros(df, vendedor='Todos', mes=None, ano=None, situacao='Faturada
 
 def processar_dados_ticket_medio(df):
     df['Data_Emissao'] = pd.to_datetime(df['Data_Emissao'], format='mixed', dayfirst=True)
-    df['Semana'] = df['Data_Emissao'].dt.isocalendar().week
-    colunas_nf_unicas = ['NF', 'Data_Emissao', 'Vendedor', 'Valor_Total_Nota', 'Mes', 'Ano', 'Semana', 'situacao']
+    colunas_nf_unicas = ['NF', 'Data_Emissao', 'Vendedor', 'Valor_Total_Nota', 'Mes', 'Ano', 'situacao']
     df_nf_unicas = df.drop_duplicates(subset='NF')[colunas_nf_unicas].copy()
     df_nf_unicas = df_nf_unicas[df_nf_unicas['situacao'] == 'Faturada']
 
@@ -180,33 +179,53 @@ def processar_dados_ticket_medio(df):
 
     df_nf_unicas = aplicar_filtros(df_nf_unicas, mes=mes_atual, ano=ano_atual)
 
-    df_resumo = df_nf_unicas.groupby(['Ano', 'Mes', 'Semana', 'Vendedor'])['NF'].count().reset_index(name='Quantidade_Notas_Semana')
-    df_nf_unicas = pd.merge(df_nf_unicas, df_resumo, on=['Ano', 'Mes', 'Semana', 'Vendedor'], how='left')
-    df_nf_unicas['Quantidade_Notas_Semana'] = df_nf_unicas['Quantidade_Notas_Semana'].fillna(0).astype(int)
-
-    df_resumo_vendas = df_nf_unicas.groupby(['Ano', 'Mes', 'Semana', 'Vendedor'])['Valor_Total_Nota'].sum().reset_index(name='Soma_Venda_Semana')
-    df_nf_unicas = pd.merge(df_nf_unicas, df_resumo_vendas, on=['Ano', 'Mes', 'Semana', 'Vendedor'], how='left')
-
-    df_ticket_medio = df_nf_unicas.groupby(['Vendedor', 'Semana'])['Valor_Total_Nota'].mean().reset_index(name='Ticket_Medio')
+    df_ticket_medio = df_nf_unicas.groupby('Vendedor')['Valor_Total_Nota'].mean().reset_index(name='Ticket_Medio')
+    df_ticket_medio['Ticket Medio'] = df_ticket_medio['Ticket_Medio'].apply(formatar_moeda) 
+    
     return df_ticket_medio
 
-def criar_tabela_ticket_medio(df_ticket_medio):
-    """Cria uma tabela com o ticket médio por vendedor e semana."""
+def exibir_grafico_ticket_medio(df_ticket_medio):
+    df_ticket_medio['Ticket Medio'] = df_ticket_medio['Ticket_Medio'].apply(formatar_moeda)
 
-    # Pivotear a tabela
-    tabela_pivot = df_ticket_medio.pivot(index='Vendedor', columns='Semana', values='Ticket_Medio')
+    fig = px.bar(
+        df_ticket_medio,
+        x="Vendedor",
+        y="Ticket_Medio",
+        title="Ticket Médio por Vendedor",
+        labels={"Ticket_Medio": "Ticket Médio", "Vendedor": "Vendedor"},
+        text=df_ticket_medio["Ticket Medio"],
+        template="plotly_dark",
+        hover_data={"Vendedor": False, "Ticket_Medio": False, 'Ticket Medio': True}
+    )
 
-    # Renomear as colunas para "Semana 1", "Semana 2", etc.
-    tabela_pivot.columns = [f"Semana {i+1}" for i in range(len(tabela_pivot.columns))]
+    fig.update_traces(
+        marker=dict(line=dict(color='black', width=1)),
+        hoverlabel=dict(bgcolor="black", font_size=18, font_family="Arial, sans-serif"),
+        textfont=dict(size=14, color='#ffffff', family="Arial, sans-serif"),
+        textposition='outside',
+        cliponaxis=False
+    )
 
-    # Resetar o índice para ter a coluna "Vendedor"
-    tabela_pivot = tabela_pivot.reset_index()
+    fig.update_layout(
+        yaxis_title="Ticket Médio",
+        xaxis_title="Vendedor",
+        showlegend=False,
+        height=400, width=350,
+        xaxis=dict(tickfont=dict(size=14)),
+        yaxis=dict(
+            title=dict(
+                text="Ticket Médio",
+                font=dict(size=14)
+            ),
+            tickfont=dict(size=14),
+        ),
+        title_font=dict(size=16, family="Times New Roman"),
+        bargap=0.1
+    )
 
-    # Formatar os valores da tabela como moeda
-    for col in tabela_pivot.columns[1:]:  # Começar da segunda coluna (Semana 1)
-        tabela_pivot[col] = tabela_pivot[col].apply(formatar_moeda)
+    return fig
 
-    return tabela_pivot
+
 
 def renderizar_pagina_vendas(df):
     df_filtrado = aplicar_filtros(df)
@@ -231,7 +250,7 @@ def renderizar_pagina_vendas(df):
         </div>
         """
 
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
 
     with col1:
         st.markdown(card_style("Total de Notas", f"{total_nf}"), unsafe_allow_html=True)
@@ -239,13 +258,15 @@ def renderizar_pagina_vendas(df):
         st.markdown(card_style("Total de Produtos", f"{total_qtd_produto}"), unsafe_allow_html=True)
     with col3:
         st.markdown(card_style("Faturamento Total", formatar_moeda(valor_total_item)), unsafe_allow_html=True)
+    with col4:
+        st.markdown(card_style("Ticket Médio", formatar_moeda(ticket_medio_geral)), unsafe_allow_html=True)
 
     df_ticket_medio = processar_dados_ticket_medio(df_filtrado)
 
     df_ranking = ranking_clientes(df_filtrado)
     df_ranking = df_ranking.reset_index(drop=True)
     df_ranking = df_ranking.iloc[::-1]
-
+    
     fig = px.bar(
         df_ranking,
         x="Cliente",
@@ -257,26 +278,23 @@ def renderizar_pagina_vendas(df):
     )
 
     fig.update_traces(
-        textposition="inside",
-        textfont=dict(size=12, color="white")
+        textposition="outside",
+        textfont=dict(size=18, color="white")
     )
 
     fig.update_layout(
-        height=300,
+        height=600,
         width=300,
-        title_font=dict(size=14)
+        title_font=dict(size=14),
+        xaxis={'categoryorder':'total descending'}
     )
-
-    # Adicionar a tabela de ticket médio
-    tabela_ticket_medio = criar_tabela_ticket_medio(df_ticket_medio)
-    st.subheader("Ticket Médio por Vendedor e Semana (Tabela)")
-    st.dataframe(tabela_ticket_medio)
 
     graphs = [
         criar_grafico_vendas_diarias(df_filtrado, mes_atual, ano_atual),
         criar_grafico_barras(agrupar_e_somar(df_filtrado, 'Vendedor'), 'Vendedor', 'Valor_Total_Item', 'Vendas por Vendedor', {'Valor_Total_Item': 'Valor Total de Venda'}),
-        criar_grafico_barras(produtos_mais_vendidos(df_filtrado), 'Descricao_produto', 'Valor_Total_Item', 'Top 10 Produtos Mais Vendidos', {'Descricao_produto': 'Produto', 'Valor_Total_Item': 'Valor Total de Venda'}),
+        criar_grafico_barras(produtos_mais_vendidos(df_filtrado), 'Descricao_produto', 'Valor_Total_Item', 'Top 5 Produtos Mais Vendidos', {'Descricao_produto': 'Produto', 'Valor_Total_Item': 'Valor Total de Venda'}),
         criar_grafico_pizza_vendas_linha(df_filtrado),
+        exibir_grafico_ticket_medio(df_ticket_medio),
         fig
     ]
 
