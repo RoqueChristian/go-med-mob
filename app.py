@@ -63,7 +63,7 @@ def ranking_clientes(df, top_n=5, max_len=25):
     df_clientes['Cliente'] = df_clientes['Cliente'].str[:max_len]
     return df_clientes
 
-def produtos_mais_vendidos(df, top_n=5, ordenar_por='Valor_Total_Item', max_len=30):
+def produtos_mais_vendidos(df, top_n=5, ordenar_por='Valor_Total_Item', max_len=15):
     df_agrupado = df.groupby('Descricao_produto')[ordenar_por].sum().reset_index()
     df_ordenado = df_agrupado.sort_values(by=ordenar_por, ascending=False)
     df_ordenado['Descricao_produto'] = df_ordenado['Descricao_produto'].str[:max_len]
@@ -244,6 +244,7 @@ def renderizar_pagina_vendas(df):
             color: {color};
             text-align: center;
             box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+            margin-bottom: 10px;
         ">
             <h4 style="margin: 0; font-size: 16px;">{metric_name}</h4>
             <h2 style="margin: 5px 0; font-size: 20px;">{value}</h2>
@@ -267,9 +268,12 @@ def renderizar_pagina_vendas(df):
     df_ranking = df_ranking.reset_index(drop=True)
     df_ranking = df_ranking.iloc[::-1]
     
+    df_ranking["Cliente Curto"] = df_ranking["Cliente"].apply(lambda x: x[:25] + '...' if len(x) > 10 else x)
+
+
     fig = px.bar(
         df_ranking,
-        x="Cliente",
+        x="Cliente Curto",
         y="Valor_Total_Item",
         orientation="v",
         title="Top Clientes por Faturamento",
