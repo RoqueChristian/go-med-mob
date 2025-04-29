@@ -301,7 +301,7 @@ def criar_grafico_performance_vendedores(df_performance):
         text=df_performance['Meta_Formatada'],
         textposition='outside',
         insidetextanchor='end',
-        textfont=dict(size=20, color='#ffffff', family="Arial, sans-serif")
+        textfont=dict(size=12, color='#ffffff', family="Arial, sans-serif")
     ))
 
     fig.add_trace(go.Bar(
@@ -312,7 +312,7 @@ def criar_grafico_performance_vendedores(df_performance):
         text=df_performance['Total_Vendido_Formatado'],
         textposition='inside',
         insidetextanchor='middle',
-        textfont=dict(size=18, color='#000', family="Arial, sans-serif")
+        textfont=dict(size=12, color='#000', family="Arial, sans-serif")
     ))
 
     altura_anotacao = max_meta * 0.05  # 5% da maior meta acima
@@ -331,9 +331,9 @@ def criar_grafico_performance_vendedores(df_performance):
             y=y_pos_annotation,
             text=row['Porcentagem_Texto'],
             showarrow=False,
-            font=dict(size=32, color=cor_texto_anotacao, family="Arial, sans-serif"),
+            font=dict(size=16, color=cor_texto_anotacao, family="Arial, sans-serif"),
             align='center',
-            hoverlabel=dict(bgcolor="#fff", font_size=22, font_family="Arial, sans-serif")
+            hoverlabel=dict(bgcolor="#fff", font_size=14, font_family="Arial, sans-serif")
         )
         
 
@@ -348,8 +348,8 @@ def criar_grafico_performance_vendedores(df_performance):
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
         height=500,
         width=300,
-        xaxis=dict(tickfont=dict(size=28)),
-        title_font=dict(size=40, family="Times New Roman"),
+        xaxis=dict(tickfont=dict(size=12)),
+        title_font=dict(size=18, family="Times New Roman"),
         margin=dict(l=50, r=20, b=100, t=50)
     )
     return fig
